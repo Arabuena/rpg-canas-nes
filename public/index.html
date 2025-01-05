@@ -53,6 +53,7 @@
         let dragOffsetX = 0;
         let dragOffsetY = 0;
         let resizeHandleSize = 10;
+        let isMaster = false;
 
         function addPlayer(name, avatar) {
             const x = Math.random() * (canvas.width - 50);
@@ -110,6 +111,10 @@
             if (!name) {
                 alert('Por favor, insira um nome para o jogador.');
                 return;
+            }
+
+            if (!isMaster) {
+                isMaster = true; // O primeiro a logar será mestre
             }
 
             addPlayer(name, avatar);

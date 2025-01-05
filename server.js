@@ -6,52 +6,44 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-let master = null; // Armazena o socket do mestre
-let players = [];  // Armazena os sockets dos jogadores
+let masterSocket = null; // Armazena o socket do mestre
+let gameState = {}; // Armazena o estado do jogo
 
-// Quando um jogador se conecta
-io.on('connection', (socket) => {
-    console.log('Um jogador se conectou');
-    
-    // Verifica se o jogador é o mestre (primeiro a conectar)
-    if (!master) {
-        master = socket;
-        socket.emit('setRole', 'master'); // Envia para o mestre
-    } else {
-        players.push(socket);
-        socket.emit('setRole', 'player'); // Envia para o jogador
-    }
-
-    // Evento de desconexão
-    socket.on('disconnect', () => {
-        console.log('Jogador desconectado');
-        if (socket === master) {
-            master = null; // Resetando o mestre
-        } else {
-            players = players.filter(player => player !== socket);
-        }
-    });
-
-    // Evento para o mestre alterar objetos no jogo
-    socket.on('changeObject', (data) => {
-        if (socket === master) {
-            // Envia a mudança para todos os jogadores
-            io.emit('updateGame', data);
-        }
-    });
-
-    // Evento para o mestre contar a história
-    socket.on('tellStory', (story) => {
-        if (socket === master) {
-            // Envia a história para todos os jogadores
-            io.emit('updateStory', story);
-        }
-    });
+app.get('/', (req, res) => {
+  res.send('Servidor rodando!');
 });
 
-// Servir os arquivos estáticos (HTML, CSS, JS)
-app.use(express.static('public'));
+io.on('connection', (socket) => {
+  console.log('Novo jogador conectado: ', socket.id);
+
+  // Verificar se é o primeiro jogador a conectar e torná-lo mestre
+  if (!masterSocket) {
+    masterSocket = socket;
+    socket.emit('role', 'master'); // Enviar para o mestre
+  } else {
+    socket.emit('role', 'player'); // Enviar para os outros jogadores
+  }
+
+  // Lidar com a atualização do estado do jogo (só o mestre pode fazer isso)
+  socket.on('updateGameState', (newState) => {
+    if (socket === masterSocket) {
+      gameState = newState; // Atualiza o estado se for o mestre
+      io.emit('gameState', gameState); // Envia para todos os jogadores
+    }
+  });
+
+  // Enviar estado atual do jogo para o jogador ao conectar
+  socket.emit('gameState', gameState);
+
+  // Lidar com desconexão
+  socket.on('disconnect', () => {
+    console.log('Jogador desconectado: ', socket.id);
+    if (socket === masterSocket) {
+      masterSocket = null; // Recomeça o mestre quando desconectar
+    }
+  });
+});
 
 server.listen(3000, () => {
-    console.log('Servidor ouvindo na porta 3000');
+  console.log('Servidor rodando na porta 3000');
 });
