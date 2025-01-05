@@ -1,0 +1,17 @@
+```gitignore
+# Node.js
+node_modules/
+
+# Vercel
+.vercel/
+
+# Logs
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# Arquivos temporários
+.DS_Store
+*.swp
