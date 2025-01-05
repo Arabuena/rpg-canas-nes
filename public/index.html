@@ -55,6 +55,24 @@
         let resizeHandleSize = 10;
         let isMaster = false;
 
+        // Conecta ao servidor WebSocket
+        const socket = new WebSocket('ws://localhost:8080');
+
+        socket.onopen = () => {
+            console.log("Conectado ao servidor WebSocket.");
+        };
+
+        socket.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            if (message.type === 'playerJoined') {
+                console.log(`Jogador ${message.playerName} entrou como ${message.role}`);
+            }
+            if (message.type === 'gameUpdate') {
+                // Atualização do jogo, você pode implementar a lógica aqui
+                console.log('Atualização do jogo:', message.action);
+            }
+        };
+
         function addPlayer(name, avatar) {
             const x = Math.random() * (canvas.width - 50);
             const y = Math.random() * (canvas.height - 50);
@@ -107,11 +125,20 @@
         enterGameButton.addEventListener('click', () => {
             const name = playerNameInput.value.trim();
             const avatar = avatarSelect.value;
+            const roomId = "sala1"; // Pode-se pegar dinamicamente o ID da sala
 
             if (!name) {
                 alert('Por favor, insira um nome para o jogador.');
                 return;
             }
+
+            // Envia a solicitação para entrar na sala
+            socket.send(JSON.stringify({
+                type: 'joinRoom',
+                playerName: name,
+                avatar: avatar,
+                roomId: roomId
+            }));
 
             if (!isMaster) {
                 isMaster = true; // O primeiro a logar será mestre

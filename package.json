@@ -1,16 +1,18 @@
 {
   "name": "rpg-canas-nes",
   "version": "1.0.0",
-  "description": "",
+  "description": "Este é um jogo RPG online chamado **RPG Canas NES**, desenvolvido usando Node.js, Express, Socket.io e hospedado na Vercel.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^4.21.2",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.0"
   }
 }
