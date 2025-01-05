@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Interativo</title>
+    <style>
+        #gameScreen {
+            display: none;
+        }
+        canvas {
+            border: 1px solid black;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginForm">
+        <h1>Bem-vindo ao Jogo</h1>
+        <label for="playerName">Nome do Jogador:</label>
+        <input type="text" id="playerName">
+        <label for="avatar">Escolha um Avatar:</label>
+        <select id="avatar">
+            <option value="male">Masculino</option>
+            <option value="female">Feminino</option>
+        </select>
+        <button id="enterGame">Entrar no Jogo</button>
+    </div>
+
+    <div id="gameScreen">
+        <button id="addObject">Adicionar Objeto</button>
+        <input type="file" id="uploadImage" accept="image/*">
+        <input type="file" id="uploadBackground" accept="image/*">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const playerNameInput = document.getElementById('playerName');
+        const avatarSelect = document.getElementById('avatar');
+        const enterGameButton = document.getElementById('enterGame');
+        const gameScreen = document.getElementById('gameScreen');
+        const addObjectButton = document.getElementById('addObject');
+        const uploadImageInput = document.getElementById('uploadImage');
+        const uploadBackgroundInput = document.getElementById('uploadBackground');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let objects = [];
+        let selectedObject = null;
+        let isDragging = false;
+        let isResizing = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let resizeHandleSize = 10;
+
+        function addPlayer(name, avatar) {
+            const x = Math.random() * (canvas.width - 50);
+            const y = Math.random() * (canvas.height - 50);
+            const color = avatar === 'male' ? 'blue' : 'pink';
+            objects.push({ name, x, y, width: 50, height: 50, color, isPlayer: true });
+            drawCanvas();
+        }
+
+        function addObject() {
+            const x = Math.random() * (canvas.width - 100);
+            const y = Math.random() * (canvas.height - 100);
+            objects.push({ x, y, width: 100, height: 100, color: getRandomColor(), image: null, flipX: false, flipY: false, isPlayer: false });
+            drawCanvas();
+        }
+
+        function getRandomColor() {
+            return `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
+        }
+
+        function drawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (canvas.backgroundImage) {
+                ctx.drawImage(canvas.backgroundImage, 0, 0, canvas.width, canvas.height);
+            }
+
+            objects.forEach((obj) => {
+                ctx.save();
+                ctx.translate(obj.x + obj.width / 2, obj.y + obj.height / 2);
+
+                if (obj.flipX) ctx.scale(-1, 1);
+                if (obj.flipY) ctx.scale(1, -1);
+
+                if (obj.image) {
+                    ctx.drawImage(obj.image, -obj.width / 2, -obj.height / 2, obj.width, obj.height);
+                } else {
+                    ctx.fillStyle = obj.color;
+                    ctx.fillRect(-obj.width / 2, -obj.height / 2, obj.width, obj.height);
+                }
+
+                ctx.restore();
+
+                if (obj === selectedObject) {
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(obj.x + obj.width - resizeHandleSize, obj.y + obj.height - resizeHandleSize, resizeHandleSize, resizeHandleSize);
+                }
+            });
+        }
+
+        enterGameButton.addEventListener('click', () => {
+            const name = playerNameInput.value.trim();
+            const avatar = avatarSelect.value;
+
+            if (!name) {
+                alert('Por favor, insira um nome para o jogador.');
+                return;
+            }
+
+            addPlayer(name, avatar);
+            loginForm.style.display = 'none';
+            gameScreen.style.display = 'block';
+        });
+
+        addObjectButton.addEventListener('click', addObject);
+
+        uploadImageInput.addEventListener('change', (event) => {
+            if (!selectedObject) return;
+
+            const file = event.target.files[0];
+            if (file) {
+                const img = new Image();
+                img.onload = () => {
+                    selectedObject.image = img;
+                    drawCanvas();
+                };
+                img.src = URL.createObjectURL(file);
+            }
+        });
+
+        uploadBackgroundInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const img = new Image();
+                img.onload = () => {
+                    canvas.backgroundImage = img;
+                    drawCanvas();
+                };
+                img.src = URL.createObjectURL(file);
+            }
+        });
+
+        canvas.addEventListener('mousedown', (event) => {
+            const { offsetX, offsetY } = event;
+
+            if (selectedObject &&
+                offsetX >= selectedObject.x + selectedObject.width - resizeHandleSize &&
+                offsetX <= selectedObject.x + selectedObject.width &&
+                offsetY >= selectedObject.y + selectedObject.height - resizeHandleSize &&
+                offsetY <= selectedObject.y + selectedObject.height) {
+                isResizing = true;
+                return;
+            }
+
+            selectedObject = objects.find(
+                (obj) =>
+                    offsetX >= obj.x &&
+                    offsetX <= obj.x + obj.width &&
+                    offsetY >= obj.y &&
+                    offsetY <= obj.y + obj.height
+            );
+
+            if (selectedObject) {
+                isDragging = true;
+                dragOffsetX = offsetX - selectedObject.x;
+                dragOffsetY = offsetY - selectedObject.y;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (event) => {
+            const { offsetX, offsetY } = event;
+
+            if (isDragging && selectedObject) {
+                selectedObject.x = Math.min(
+                    Math.max(0, offsetX - dragOffsetX),
+                    canvas.width - selectedObject.width
+                );
+                selectedObject.y = Math.min(
+                    Math.max(0, offsetY - dragOffsetY),
+                    canvas.height - selectedObject.height
+                );
+                drawCanvas();
+            } else if (isResizing && selectedObject) {
+                const newWidth = offsetX - selectedObject.x;
+                const newHeight = offsetY - selectedObject.y;
+
+                if (newWidth < 0) selectedObject.flipX = !selectedObject.flipX;
+                if (newHeight < 0) selectedObject.flipY = !selectedObject.flipY;
+
+                selectedObject.width = Math.abs(newWidth);
+                selectedObject.height = Math.abs(newHeight);
+                drawCanvas();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            isResizing = false;
+        });
+
+        canvas.addEventListener('dblclick', (event) => {
+            const { offsetX, offsetY } = event;
+
+            const clickedObjectIndex = objects.findIndex(
+                (obj) =>
+                    offsetX >= obj.x &&
+                    offsetX <= obj.x + obj.width &&
+                    offsetY >= obj.y &&
+                    offsetY <= obj.y + obj.height
+            );
+
+            if (clickedObjectIndex !== -1) {
+                objects.splice(clickedObjectIndex, 1);
+                selectedObject = null;
+                drawCanvas();
+            }
+        });
+
+        drawCanvas();
+    </script>
+</body>
+</html>
