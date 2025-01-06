@@ -15,7 +15,7 @@ wss.on('connection', (ws) => {
             const playerName = msg.playerName;
             const avatar = msg.avatar;
 
-            // Verifica se a sala existe, se não, cria uma nova
+            // Se a sala não existir, cria uma nova sala
             if (!rooms[roomId]) {
                 rooms[roomId] = { players: [], master: null };
             }
@@ -26,11 +26,13 @@ wss.on('connection', (ws) => {
             }
 
             // Adiciona o jogador à sala
-            rooms[roomId].players.push({ playerName, avatar, role: rooms[roomId].master === playerName ? 'mestre' : 'espectador' });
+            const role = rooms[roomId].master === playerName ? 'mestre' : 'espectador';
+            rooms[roomId].players.push({ playerName, avatar, role });
 
             // Envia para todos os jogadores na sala as informações de quem está na sala
             rooms[roomId].players.forEach(player => {
                 wss.clients.forEach(client => {
+                    // Envia para os clientes que estão na mesma sala
                     if (client.readyState === WebSocket.OPEN && client !== ws) {
                         client.send(JSON.stringify({
                             type: 'playerJoined', 
@@ -40,17 +42,25 @@ wss.on('connection', (ws) => {
                     }
                 });
             });
+
+            // Informa ao novo jogador sua posição (mestre ou espectador)
+            ws.send(JSON.stringify({
+                type: 'roomInfo', 
+                role: role, 
+                roomId: roomId, 
+                players: rooms[roomId].players 
+            }));
         }
 
-        // Envia atualizações sobre o jogo para todos os jogadores da sala
+        // Envia atualizações sobre o jogo para todos os jogadores na sala
         if (msg.type === 'gameAction') {
             const roomId = msg.roomId;
             const action = msg.action;
 
-            // Envia a ação para todos os jogadores da sala, exceto o que enviou a ação
+            // Envia a ação para todos os jogadores da sala
             rooms[roomId].players.forEach(player => {
                 wss.clients.forEach(client => {
-                    if (client.readyState === WebSocket.OPEN && rooms[roomId].players.find(p => p.playerName === player.playerName)) {
+                    if (client.readyState === WebSocket.OPEN) {
                         client.send(JSON.stringify({ type: 'gameUpdate', action }));
                     }
                 });
@@ -60,7 +70,7 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
         console.log('Cliente desconectado');
-        // Aqui você pode adicionar lógica para remover o jogador da sala e ajustar a lista de jogadores
+        // Aqui você pode adicionar lógica para remover o jogador da sala
     });
 });
 
