@@ -15,6 +15,7 @@ wss.on('connection', (ws) => {
             const playerName = msg.playerName;
             const avatar = msg.avatar;
 
+            // Verifica se a sala existe, se não, cria uma nova
             if (!rooms[roomId]) {
                 rooms[roomId] = { players: [], master: null };
             }
@@ -29,16 +30,19 @@ wss.on('connection', (ws) => {
 
             // Envia para todos os jogadores na sala as informações de quem está na sala
             rooms[roomId].players.forEach(player => {
-                // Envia a mensagem 'playerJoined' para todos os jogadores na sala
                 wss.clients.forEach(client => {
-                    if (client !== ws && client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify({ type: 'playerJoined', playerName: player.playerName, role: player.role }));
+                    if (client.readyState === WebSocket.OPEN && client !== ws) {
+                        client.send(JSON.stringify({
+                            type: 'playerJoined', 
+                            playerName: player.playerName, 
+                            role: player.role 
+                        }));
                     }
                 });
             });
         }
 
-        // Envia atualizações sobre o jogo para todos os jogadores
+        // Envia atualizações sobre o jogo para todos os jogadores da sala
         if (msg.type === 'gameAction') {
             const roomId = msg.roomId;
             const action = msg.action;
@@ -46,7 +50,7 @@ wss.on('connection', (ws) => {
             // Envia a ação para todos os jogadores da sala, exceto o que enviou a ação
             rooms[roomId].players.forEach(player => {
                 wss.clients.forEach(client => {
-                    if (client.readyState === WebSocket.OPEN) {
+                    if (client.readyState === WebSocket.OPEN && rooms[roomId].players.find(p => p.playerName === player.playerName)) {
                         client.send(JSON.stringify({ type: 'gameUpdate', action }));
                     }
                 });
